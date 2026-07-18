@@ -32,6 +32,16 @@ CFW required.
 
 `dir.ini` wires these paths. Screenshots go to `ms0:/PICTURE`.
 
+## Wi-Fi Receive (FogTransfer)
+
+Send ROMs from PC without CM File Manager:
+
+1. On PSP: FogGBA menu → **Wi-Fi Receive** (note IP, port **2121**)
+2. On PC: run the FogTransfer client (`psp-wireless-transfer`) → tab **FogGBA** → send `.gba` / `.zip`
+3. File lands in `roms/`
+
+PSP and PC must be on the same Wi-Fi network (router).
+
 ## Fixes in this fork (vs FrogGBA 0.3.3)
 
 - Savestate load no longer Bus Errors (dynarec cache flush after load)
@@ -40,6 +50,7 @@ CFW required.
 - LOAD ↔ SAVE indicator restored (Left/Right toggles, Circle executes)
 - LOAD/SAVE label placed to the right of the save date (no overlap)
 - XMB title (`PARAM.SFO`) fixed for system label next to icon
+- **Wi-Fi Receive** — built-in ROM transfer (FogTransfer protocol)
 
 ## Credits
 

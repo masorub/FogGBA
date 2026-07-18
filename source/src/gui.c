@@ -19,6 +19,8 @@
  */
 
 #include "common.h"
+#include "gui.h"
+#include "wifi_receive.h"
 #include <pspiofilemgr.h>
 
 #define GPSP_CONFIG_FILENAME  "foggba.cfg"
@@ -2186,6 +2188,8 @@ u32 menu(void)
 
     ACTION_OPTION(NULL, NULL, MSG[MSG_MAIN_MENU_7], MSG_MAIN_MENU_HELP_7, 13),
 
+    ACTION_OPTION(NULL, NULL, "Wi-Fi Receive", 0, 14),
+
     ACTION_OPTION(NULL, NULL, MSG[MSG_MAIN_MENU_8], MSG_MAIN_MENU_HELP_8, 15),
 
     ACTION_OPTION(NULL, NULL, MSG[MSG_MAIN_MENU_9], MSG_MAIN_MENU_HELP_9, 16),
@@ -2474,6 +2478,9 @@ u32 menu(void)
               {
                 case 13: // "Load Game"
                   menu_load_file();
+                  break;
+                case 14: // "Wi-Fi Receive"
+                  wifi_receive_run();
                   break;
                 case 15: // "Reset Game"
                   menu_reset();
