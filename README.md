@@ -1,129 +1,56 @@
-# FrogGBA - TempGBA mod by Prosty
+# FogGBA — Frog resurrected
 
-## Download & Installation
-![FrogGBA Icon](source/res/ICON0.png)
+**FogGBA** is a revived fork of FrogGBA 0.3.3 for PlayStation Portable.  
+Author: **masorub**
 
-**→ [Download the latest release here](https://github.com/tzubertowski/FrogGBA/releases) ←**
+![FogGBA Icon](source/res/ICON0.png)
 
-You need to have a CFW installed on your PSP. 
-- Unzip the folder
-- Copy the unzipped PSP folder into root of your PSP SD card
-- Launch the emulator on the console
+Based on FrogGBA / TempGBA / gpSP Kai / gpSP. Original authors remain credited in source headers (Exophase, takka, Nebuleon, Prosty / tzubertowski, and others).
 
-### TL;DR - Key Improvements in v0.2.2
-• 🚀 **gpSP Kai Optimizations** - 10-25% performance gains in demanding titles
-• 💯 **Full Speed Castlevania** - Water sections now run at 30+ FPS (was 15-20)
-• 🎮 **Recent Games Menu** - Quick access to your last 10 played titles
-• 🖼️ **Lightning-Fast Overlays** - Full-screen borders with zero performance impact
-• ⚡ **No More Stutters** - Smart cache management eliminates micro-stutters
-• 🎨 **Color Correction** - GPSP/Retro modes with optimized lookup tables
-• 📐 **Aspect Ratio Options** - Core/Zoom/Stretch modes
-• 💾 **Rock-Solid Stability** - Fixed exit crashes and save/load issues
+## Install
 
-## About
-This is a modified version of TempGBA - a Game Boy Advance emulator for PlayStation Portable.
+CFW required (e.g. 6.61 PROMOD).
 
-This mod is based on:
-- [TempGBA](https://github.com/Nebuleon/TempGBA) by Nebuleon, Normmatt, and BassAceGold
-- TempGBA4PSP-mod (TempGBA4PSP-26731020), http://www1.axfc.net/uploader/so/3063963
+1. Download the latest release zip from [Releases](https://github.com/masorub/FogGBA/releases)
+2. Unzip to the Memory Stick root (creates `PSP/GAME/FogGBA/`)  
+   or copy the whole `FogGBA` folder to `ms0:/PSP/GAME/`
+3. You need **all** of: `EBOOT.PBP`, `FogGBA.prx`, `ku_bridge.prx`, `exception.prx`
+4. Put `gba_bios.bin` next to `EBOOT.PBP`
+5. Put ROMs in `roms/`
+6. Launch **FogGBA** from the Games menu
 
-## What's New in FrogGBA (Since v1.0)
+### Folder layout
 
-### 🖼️ Overlay System (Enhanced in v0.2.2)
-- **Lightning-Fast Loading**: Completely reworked overlay system loads instantly with zero performance impact
-- **Full-Screen Borders**: Overlays can now stretch across the entire PSP display
-- **Custom Overlays/Borders**: Render PNG overlays above the game window for bezels, borders, and custom frames
-- **X/Y Offset Controls**: Position the game window anywhere on screen
-- **Online Overlay Generator**: Convert PNG images to OVL format at [froggba.onrender.com](https://froggba.onrender.com)
-- **Multiple Overlay Slots**: Store up to 10 different overlays and switch between them
-- **RLE Compression**: Advanced compression handles pixel-dense designs without slowdown
+| Folder | Purpose |
+|--------|---------|
+| `roms/` | GBA ROMs (`.gba`, `.zip`) |
+| `save/` | Battery saves (`.sav`) |
+| `state/` | Savestates (`.svs`) |
+| `cfg/` | Per-game configs |
+| `cheat/` | Cheat files |
+| `overlays/` | Screen overlays (`.ovl`) |
 
-### 📐 Display Options
-- **Aspect Ratio Modes**:
-  - **Core Provided (3:2)**: Original GBA aspect ratio with proper scaling
-  - **Zoom (Fill Screen)**: Fills screen vertically, crops sides slightly
-  - **Stretch (Full PSP)**: Stretches to fill entire 480×272 screen
-- **Color Correction**: 
-  - GPSP mode with optimized lookup tables
-  - Retro mode for authentic GBA colors
-  - Off for raw output
-- **FPS Display**: SELECT + Square to toggle performance counter
+`dir.ini` wires these paths. Screenshots go to `ms0:/PICTURE`.
 
-### ⚡ Performance Optimizations
-- **gpSP Kai Engine**: Implemented proven optimizations from the legendary gpSP Kai
-  - Static translation caches for reduced memory fragmentation
-  - Cache invalidation reduction for smoother frame pacing  
-  - Optimized tile rendering pipeline matching gpSP Kai approach
-- **Multi-Layer Rendering**: Fixed 4-layer Mode 0 bottlenecks
-  - **Castlevania Series**: Water sections now run at full 30+ FPS (was 15-20 FPS)
-  - **Golden Sun Series**: Battle effects and world map rendering improved
-  - **Fire Emblem**: Large battle animations no longer cause slowdown
-- **Memory Management**: Optimized for PSP architecture
-  - 2MB ROM cache, 256KB RAM cache (reduced from previous oversized caches)
-  - Pre-warmed cache lines reduce initial load stutters
-- **Audio Processing**: Improved buffering reduces crackling and provides smoother sound
-- **Volatile Memory Support**: Uses additional PSP RAM for maximum performance
-  - Works on all PSP models (1000/2000/3000/Go)
+## Fixes in this fork (vs FrogGBA 0.3.3)
 
-### 💾 Save State Improvements
-- **Auto Menu Exit**: Menu automatically closes after loading/saving states
-- **Better Memory Management**: Temporarily frees overlay memory during save/load operations
-- **File Validation**: Prevents crashes from corrupted or empty save states
-- **Persistent Settings**: All new options are saved in config
+- Savestate load no longer Bus Errors (dynarec cache flush after load)
+- Overlay pause/resume fixed (no double-free crash)
+- Savestate details menu no longer crashes on button press (null trampoline / nested functions)
+- LOAD ↔ SAVE indicator restored (Left/Right toggles, Circle executes)
+- LOAD/SAVE label placed to the right of the save date (no overlap)
+- XMB title (`PARAM.SFO`) fixed for system label next to icon
 
-### 🎮 Quality of Life  
-- **Recent Games Menu**: Your last 10 played titles appear at the top when loading a game
-- **Fast Forward**: SELECT + R toggles 2x/3x speed modes
-- **Turbo Buttons**: Triangle and Square as dedicated turbo buttons
-- **ROM Validation**: Prevents crashes when loading invalid files
-- **Clean Exit**: Fixed BSOD crashes when exiting the emulator
-- **Smooth Transitions**: Eliminated micro-stutters during level loading
+## Build
 
-### 🔧 Technical Improvements
-- **PSP Cycle Batching**: Reduces dynamic recompiler overhead
-- **Cache Invalidation Reduction**: Conservative cache management
-- **Timer Prescaling Optimization**: Better audio/video sync
-- **Smart Memory Allocation**: Dynamic allocation reduces static memory usage by ~550KB
+See [BUILD_INSTRUCTIONS.md](BUILD_INSTRUCTIONS.md). Docker image + `build.sh`.
 
-### 📈 Performance Impact (v0.2.2)
-- **Castlevania Series**: Water sections 15-20 FPS → 30+ FPS (100% speed achieved!)
-- **Golden Sun Series**: Battle effects now run without slowdown
-- **Fire Emblem**: Large animations no longer cause frame drops
-- **Kirby Amazing Mirror**: Eliminated level transition stutters
-- **Overall**: 10-25% improvement in demanding titles, consistent 60 FPS in most games
+## Credits
 
-## 🎨 How to Use Custom Overlays
+- gpSP — Exophase  
+- gpSP Kai — takka  
+- TempGBA — Nebuleon et al.  
+- FrogGBA — Prosty / tzubertowski  
+- **FogGBA** — masorub
 
-### Creating Overlays
-1. **Visit the Online Generator**: Go to [froggba.onrender.com](https://froggba.onrender.com)
-2. **Upload Your PNG**: 
-   - Image must be exactly 480×272 pixels (PSP screen size)
-   - Transparent areas will show the game
-   - Opaque areas will be the border/bezel
-3. **Download OVL File**: Click convert and download the generated .ovl file
-4. **Install on PSP**:
-   - Copy the .ovl file to `/PSP/GAME/FrogGBA/overlays/` on your Memory Stick
-   - Files will appear in the Overlay menu in-game
-
-### Using Overlays in FrogGBA
-1. Press **HOME** during gameplay to open the menu
-2. Navigate to **Overlay Settings**
-3. Select your overlay from the list
-4. Adjust X/Y offset if needed to position the game window
-5. Enable/disable overlays with the toggle option
-
-### Tips for Best Results
-- Design overlays with a transparent center area for the game (240×160 minimum)
-- Use PNG transparency for see-through areas
-- Keep border designs simple to avoid hitting the 30,000 pixel limit
-- Test different aspect ratios with your overlays (Core/Zoom/Stretch)
-
-## Original TempGBA Features
-
-- Added gpsp kai's cheats function
-- Added Chinese language support  
-- Added restore function
-- New menu icon
-- Imported code from TempGBA-mod-dstwo-26750220
-- Modern PSP SDK compatibility
-- Docker-based build system
+Upstream: [tzubertowski/FrogGBA](https://github.com/tzubertowski/FrogGBA)

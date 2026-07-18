@@ -7,20 +7,26 @@ EBOOT.PBP
 PARAM.SFO
 TempGBA.*
 FrogGBA.*
+FogGBA.*
 
-# Build directory artifacts
-build/EBOOT.PBP
-build/FrogGBA.prx
-build/*.o
+# Build directory
+build/
+
+# Release packages (upload via GitHub Releases, not git)
+release/*.zip
+release/PSP/
 
 # Compilation logs
 compile.txt
 buildlog.txt
 
-# Screenshots/test images
+# Screenshots/test images (keep icons in res/)
 *.jpg
 *.png
-!res/*.png
+!source/res/*.png
+!**/res/ICON0.png
+!**/res/PIC1.png
+!**/res/ICON0_BCKP.png
 
 # Temporary files
 *.tmp

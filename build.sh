@@ -1,19 +1,17 @@
 #!/bin/bash
 
-# FrogGBA Build Script
-# This script compiles the FrogGBA emulator for PSP
+# FogGBA Build Script (Frog resurrected)
+# Compiles the FogGBA emulator for PSP
 
-set -e  # Exit on any error
+set -e
 
-echo "=== FrogGBA Build Script ==="
+echo "=== FogGBA Build Script ==="
 echo "Setting up PSP development environment..."
 
-# Set PSP development environment variables
 export PSPDEV=/usr/local/pspdev
 export PATH=$PATH:$PSPDEV/bin
 export PSPSDK=$PSPDEV/psp/sdk
 
-# Verify toolchain is installed
 echo "Checking PSP toolchain..."
 if ! command -v psp-gcc &> /dev/null; then
     echo "ERROR: PSP toolchain not found. Make sure the Docker image was built correctly."
@@ -26,29 +24,45 @@ psp-gcc --version | head -1
 echo "PSP SDK path: $PSPSDK"
 echo "PSP DEV path: $PSPDEV"
 
-# Navigate to source directory
 cd source
 
-echo "=== Building FrogGBA ==="
+echo "=== Building FogGBA ==="
 echo "Cleaning previous build..."
 make clean || true
 
 echo "Starting compilation..."
 make
 
-# Check if build was successful
-if [ -f "FrogGBA.prx" ] && [ -f "EBOOT.PBP" ]; then
+if [ -f "FogGBA.prx" ] && [ -f "EBOOT.PBP" ]; then
     echo "=== BUILD SUCCESSFUL ==="
     echo "Generated files:"
-    ls -la FrogGBA.prx EBOOT.PBP
-    
-    # Create output directory
+    ls -la FogGBA.prx EBOOT.PBP
+
+    # SDK pack-pbp uses TITLE max_len=8 and omits TITLE_8; patch PARAM.SFO for XMB text.
+    ROOT="$(cd .. && pwd)"
+    PATCH="$ROOT/tools/make_param_sfo.py"
+    if command -v python3 &> /dev/null && [ -f "$PATCH" ]; then
+        echo "=== Patching PARAM.SFO (TITLE/TITLE_8/MEMSIZE/DISC_ID) ==="
+        python3 "$PATCH" --eboot-in EBOOT.PBP --eboot-out EBOOT.PBP \
+            --sfo-out PARAM.SFO res/PARAM.SFO
+    elif command -v python &> /dev/null && [ -f "$PATCH" ]; then
+        echo "=== Patching PARAM.SFO (TITLE/TITLE_8/MEMSIZE/DISC_ID) ==="
+        python "$PATCH" --eboot-in EBOOT.PBP --eboot-out EBOOT.PBP \
+            --sfo-out PARAM.SFO res/PARAM.SFO
+    else
+        echo "WARNING: python3 not found or $PATCH missing."
+        echo "  EBOOT may show no XMB title (TITLE max_len=8). Install python3 or run:"
+        echo "  python3 tools/make_param_sfo.py --eboot-in source/EBOOT.PBP --eboot-out source/EBOOT.PBP"
+        echo "  Makefile already sets PSP_LARGE_MEMORY=1 (MEMSIZE)."
+    fi
+
     mkdir -p ../build
-    cp FrogGBA.prx ../build/
+    cp FogGBA.prx ../build/
     cp EBOOT.PBP ../build/
-    
+    cp -f PARAM.SFO ../build/ 2>/dev/null || true
+
     echo "Build artifacts copied to build/ directory"
-    echo "You can now copy EBOOT.PBP to your PSP's PSP/GAME/FrogGBA/ folder"
+    echo "Copy BOTH EBOOT.PBP and FogGBA.prx to PSP/GAME/FogGBA/"
 else
     echo "=== BUILD FAILED ==="
     echo "Expected output files not found"

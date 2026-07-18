@@ -21,7 +21,7 @@
 #include "common.h"
 #include <pspiofilemgr.h>
 
-#define GPSP_CONFIG_FILENAME  "froggba.cfg"
+#define GPSP_CONFIG_FILENAME  "foggba.cfg"
 #define GPSP_CONFIG_NUM       (26 + 16) // options + game pad config + overlay options + aspect ratio + compatibility mode + button mapping + resume on boot + auto save state
 #define GPSP_GAME_CONFIG_NUM  (7 + 16)
 
@@ -154,7 +154,7 @@ typedef struct _MenuType MenuType;
 
 #define SAVESTATE_OPTION(number)                                              \
 {                                                                             \
-  menu_select_savestate,                                                      \
+  NULL,                                                                       \
   NULL,                                                                       \
   NULL,                                                                       \
   savestate_timestamps[number],                                               \
@@ -282,8 +282,10 @@ static char recent_games[MAX_RECENT_GAMES][MAX_PATH];
 static int num_recent_games = 0;
 static const char *recent_games_display[MAX_RECENT_GAMES];
 
-// Global yes/no options - needed for overlay menu
-static const char *global_yes_no_options[2];
+// Global yes/no options - initialized with literals so static menus are safe
+// before menu() fills MSG[] pointers (GitHub #11/#17 Saving options crash)
+static const char *global_yes_no_options[2] = { "No", "Yes" };
+static const char *saving_yes_no_options[2] = { "No", "Yes" };
 
 // Global menu structures for overlay - must be here to avoid scope issues  
 MenuOptionType overlay_options_global[5] = {
@@ -301,10 +303,10 @@ MenuType overlay_menu_global = {
   5
 };
 
-// Saving options submenu
+// Saving options submenu (uses dedicated yes/no literals; help uses valid MSG index)
 MenuOptionType saving_options_global[2] = {
-  STRING_SELECTION_OPTION(NULL, "Resume last game: %s", global_yes_no_options, &option_resume_on_boot, 2, 0, 0),
-  STRING_SELECTION_OPTION(NULL, "Auto save/load state: %s", global_yes_no_options, &option_auto_save_state, 2, 0, 1),
+  STRING_SELECTION_OPTION(NULL, "Resume last game: %s", saving_yes_no_options, &option_resume_on_boot, 2, MSG_OPTION_MENU_HELP_9, 0),
+  STRING_SELECTION_OPTION(NULL, "Auto save/load state: %s", saving_yes_no_options, &option_auto_save_state, 2, MSG_OPTION_MENU_HELP_9, 1),
 };
 
 MenuType saving_menu_global = {
@@ -535,7 +537,7 @@ static void init_overlay_menu_late(void) {
 // Recent games tracking functions
 void load_recent_games(void) {
   char recent_games_file[MAX_PATH];
-  sprintf(recent_games_file, "%sfroggba_recent.txt", dir_cfg);
+  sprintf(recent_games_file, "%sfoggba_recent.txt", dir_cfg);
   
   // Initialize display array
   for (int i = 0; i < MAX_RECENT_GAMES; i++) {
@@ -565,7 +567,7 @@ void load_recent_games(void) {
 
 static void save_recent_games(void) {
   char recent_games_file[MAX_PATH];
-  sprintf(recent_games_file, "%sfroggba_recent.txt", dir_cfg);
+  sprintf(recent_games_file, "%sfoggba_recent.txt", dir_cfg);
   
   FILE *file = fopen(recent_games_file, "w");
   if (file) {
@@ -964,7 +966,7 @@ s32 load_file(const char **wildcards, char *result, char *default_dir_name)
 	  print_string(MSG[MSG_BROWSER_HELP], 30, 258, COLOR_HELP_TEXT, BG_NO_FILL);
 
       // Show mod credit instead of ROM Buffer
-      print_string("FrogGBA - TempGBA mod by Prosty", 270, 258, COLOR_HELP_TEXT, BG_NO_FILL);
+      print_string("FogGBA - Frog resurrected by masorub", 240, 258, COLOR_HELP_TEXT, BG_NO_FILL);
 
       // PSP controller - hold
       if (get_pad_input(PSP_CTRL_HOLD) != 0)
@@ -1288,6 +1290,11 @@ void action_savestate(void)
   u16 *current_screen;
 
   current_screen = copy_screen();
+  if (current_screen == NULL)
+  {
+    error_msg("Could not capture screen for save state.", 1);
+    return;
+  }
 
   // Free overlay memory to ensure enough RAM for save operation
   pause_overlay_for_saveload();
@@ -1686,8 +1693,22 @@ u32 menu(void)
   {
     if (!first_load)
     {
+      u16 *fresh_screen;
+
+      /* Capture immediately before save; do not reuse a potentially stale
+       * menu screenshot buffer, and never write after overlay is paused. */
+      fresh_screen = copy_screen();
+      if (fresh_screen == NULL)
+      {
+        error_msg("Could not capture screen for save state.", 1);
+        return;
+      }
+
       get_savestate_filename(savestate_slot, filename_buffer);
-      save_state(filename_buffer, current_screen);
+      pause_overlay_for_saveload();
+      save_state(filename_buffer, fresh_screen);
+      resume_overlay_after_saveload();
+      free(fresh_screen);
 
       get_savestate_info(filename_buffer, savestate_screen, line_buffer);
       sprintf(savestate_timestamps[savestate_slot], "%d: %s", (int)savestate_slot, line_buffer);
@@ -1703,7 +1724,9 @@ u32 menu(void)
     if (!first_load)
     {
       get_savestate_filename(savestate_slot, filename_buffer);
+      pause_overlay_for_saveload();
       load_state(filename_buffer);
+      resume_overlay_after_saveload();
 
       return_value = 1;
       repeat = 0;
@@ -1724,7 +1747,9 @@ u32 menu(void)
 
     if ((load_file(file_ext, filename_buffer, dir_state) == 0) && !first_load)
     {
+      pause_overlay_for_saveload();
       load_state(filename_buffer);
+      resume_overlay_after_saveload();
       return_value = 1;
       repeat = 0;
     }
@@ -1888,7 +1913,19 @@ u32 menu(void)
         savestate_slot = current_option_num;
         menu_change_state();
       }
-	print_string(MSG[savestate_action ? MSG_SAVE : MSG_LOAD], MENU_LIST_POS_X + ((strlen(savestate_timestamps[0]) + 1) * FONTWIDTH), (current_option_num * FONTHEIGHT) + 28, COLOR_ACTIVE_ITEM, BG_NO_FILL);
+	/* LOAD / SAVE indicator: place one char past the date so it never overlaps. */
+	{
+	  u32 label_x = MENU_LIST_POS_X +
+	                ((strlen(savestate_timestamps[current_option_num]) + 1) * FONTWIDTH);
+	  /* Keep clear of the preview panel on the right. */
+	  if (label_x + (4 * FONTWIDTH) > SCREEN_IMAGE_POS_X)
+	    label_x = SCREEN_IMAGE_POS_X - (5 * FONTWIDTH);
+
+	  print_string(MSG[savestate_action ? MSG_SAVE : MSG_LOAD],
+	               label_x,
+	               (current_option_num * FONTHEIGHT) + 28,
+	               COLOR_ACTIVE_ITEM, BG_NO_FILL);
+	}
     }
   }
 
@@ -2086,7 +2123,7 @@ u32 menu(void)
     ACTION_SUBMENU_OPTION(NULL, NULL, MSG[MSG_STATE_MENU_2], MSG_STATE_MENU_HELP_2, 13)
   };
 
-  MAKE_MENU(savestate, NULL, NULL);
+  MAKE_MENU(savestate, NULL, NULL); /* init via direct call below — nested ptr unsafe */
 
   MenuOptionType gamepad_config_options[] =
   {
@@ -2125,6 +2162,8 @@ u32 menu(void)
 
   MenuOptionType main_options[] =
   {
+    /* Keep action_function NULL — nested fn pointers + -fomit-frame-pointer
+     * can trampoline to NULL (Bus error BadVAddr=0). Dispatch in CURSOR_SELECT. */
     NUMERIC_SELECTION_ACTION_OPTION(NULL, NULL, MSG[MSG_MAIN_MENU_0], &savestate_slot, 10, MSG_MAIN_MENU_HELP_0, 0),
 
     NUMERIC_SELECTION_ACTION_OPTION(NULL, NULL, MSG[MSG_MAIN_MENU_1], &savestate_slot, 10, MSG_MAIN_MENU_HELP_1, 1),
@@ -2139,7 +2178,7 @@ u32 menu(void)
 
     SUBMENU_OPTION(&analog_config_menu, MSG[MSG_MAIN_MENU_6], MSG_MAIN_MENU_HELP_6, 8),
 
-    SUBMENU_OPTION(&saving_menu_global, "Saving options", 0, 9),
+    SUBMENU_OPTION(&saving_menu_global, "Saving options", MSG_OPTION_MENU_HELP_9, 9),
 
     SUBMENU_OPTION(&cheats_misc_menu, MSG[MSG_MAIN_MENU_CHEAT], MSG_MAIN_MENU_HELP_CHEAT, 10),
 
@@ -2155,7 +2194,7 @@ u32 menu(void)
   };
 
 
-  MAKE_MENU(main, NULL, NULL);
+  MAKE_MENU(main, NULL, NULL); /* init via direct call below — nested ptr unsafe */
 
 
   void choose_menu(MenuType *new_menu)
@@ -2249,10 +2288,15 @@ u32 menu(void)
 
     //print_string(backup_id, 228, 208, COLOR_INACTIVE_ITEM, BG_NO_FILL);
 
-    if (current_menu && current_menu->init_function != NULL)
-    {
+    /* Call submenu painters directly (same stack frame). Storing nested
+     * function pointers in MenuType.init_function breaks under
+     * -fomit-frame-pointer → NULL trampoline / missing LOAD↔SAVE UI. */
+    if (current_menu == &savestate_menu)
+      submenu_savestate();
+    else if (current_menu == &main_menu)
+      submenu_main();
+    else if (current_menu && current_menu->init_function != NULL)
       current_menu->init_function();
-    }
 
     if (current_menu && current_menu->options)
     {
@@ -2276,8 +2320,9 @@ u32 menu(void)
       }
     }
 
-	print_string(MSG[current_option->help_string], 30, 258, COLOR_HELP_TEXT, BG_NO_FILL);
-    print_string("FrogGBA - TempGBA mod by Prosty", 270, 258, COLOR_HELP_TEXT, BG_NO_FILL);
+	if (current_option->help_string != 0)
+	  print_string(MSG[current_option->help_string], 30, 258, COLOR_HELP_TEXT, BG_NO_FILL);
+    print_string("FogGBA - Frog resurrected by masorub", 240, 258, COLOR_HELP_TEXT, BG_NO_FILL);
 
     // PSP controller - hold
     if (get_pad_input(PSP_CTRL_HOLD) != 0)
@@ -2386,27 +2431,47 @@ u32 menu(void)
         switch (current_option->option_type & (ACTION_OPTION | SUBMENU_OPTION))
         {
           case (ACTION_OPTION | SUBMENU_OPTION):
-            if (current_option->action_function != NULL)
+            /* Prefer direct nested calls from this stack frame — never trust
+             * stored nested-function trampolines (can be NULL/corrupt). */
+            if (current_option->sub_menu == &savestate_menu)
+            {
+              menu_init(); /* sets menu_init_flag so LOAD mode + preview refresh */
+            }
+            else if (current_option->action_function != NULL)
               current_option->action_function();
             choose_menu(current_option->sub_menu);
             break;
 
           case ACTION_OPTION:
+            /* Savestate details menu: slots 0-9 + "load from file" */
+            if (current_menu == &savestate_menu)
+            {
+              if (current_option->line_number <= 9)
+                menu_select_savestate();
+              else if (current_option->line_number == 11)
+                menu_load_state_file();
+              break;
+            }
+
+            /* Main menu save/load — call nested helpers directly (TempGBA style),
+             * not action_savestate/action_loadstate hotkey path. */
+            if (current_menu == &main_menu && current_option->line_number == 0)
+            {
+              menu_load_state();
+              break;
+            }
+            if (current_menu == &main_menu && current_option->line_number == 1)
+            {
+              menu_save_state();
+              break;
+            }
+
             if (current_option->action_function != NULL)
               current_option->action_function();
             else
             {
-              // Handle menu actions inline to avoid corrupted function pointers
               switch (current_option->line_number)
               {
-                case 0:  // Load State
-                  action_loadstate();
-                  repeat = 0;  // Return to game after load
-                  break;
-                case 1:  // Save State  
-                  action_savestate();
-                  repeat = 0;  // Return to game after save
-                  break;
                 case 13: // "Load Game"
                   menu_load_file();
                   break;
@@ -2420,7 +2485,6 @@ u32 menu(void)
                   menu_quit();
                   break;
                 default:
-                  // For other actions, just continue for now
                   break;
               }
             }

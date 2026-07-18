@@ -3479,8 +3479,8 @@ static s32 load_game_config(char *gamepak_title, char *gamepak_code, char *gamep
               flash_device_id = FLASH_DEVICE_MACRONIX_128KB;
             }
 
-            // DBZLGCYGOKU2 �Υץ��ƥ��Ȼر�
-            // EEPROM_V124���������(�F���Єe����) ��ָ������Є�����
+            // DBZLGCYGOKU2 -Υץ--ƥ--Ȼر-
+            // EEPROM_V124---------(-F---Єe----) --ָ------Є-----
             if (!strcasecmp(current_variable, "save_type"))
             {
               if (!strcasecmp(current_value, "sram"))
@@ -3733,24 +3733,8 @@ void load_state(char *savestate_filename)
 
   sprintf(savestate_path, "%s%s", dir_state, savestate_filename);
 
-  // Temporarily free overlay memory to make room for save state operations
-  extern void free_overlay_memory(void);
-  extern void load_overlay(const char *filename);
-  extern u32 option_overlay_enabled;
-  extern u32 option_overlay_selected;
-  extern char overlay_names[10][64];
-  int need_restore_overlay = 0;
-  char saved_overlay_name[64] = {0};
-  
-  // Free overlay memory if any overlay is loaded (not just if enabled)
-  extern int overlay_loaded;
-  if (overlay_loaded || (option_overlay_enabled && option_overlay_selected > 0)) {
-    if (option_overlay_selected > 0 && option_overlay_selected < 10) {
-      strcpy(saved_overlay_name, overlay_names[option_overlay_selected]);
-      need_restore_overlay = 1;
-    }
-    free_overlay_memory();
-  }
+  /* Overlay free/restore is owned by pause_overlay_for_saveload() /
+   * resume_overlay_after_saveload() at the call sites -- do not free here. */
 
   scePowerLock(0);
 
@@ -3765,10 +3749,6 @@ void load_state(char *savestate_filename)
     if (savestate_file_size < expected_size) {
       FILE_CLOSE(savestate_file);
       scePowerUnlock(0);
-      // Restore overlay if we freed it earlier
-      if (need_restore_overlay) {
-        load_overlay(saved_overlay_name);
-      }
       error_msg("Save state file is corrupted or incomplete.", 1);
       return;
     }
@@ -3778,9 +3758,14 @@ void load_state(char *savestate_filename)
     SAVESTATE_BLOCK(read);
     FILE_CLOSE(savestate_file);
 
+    /* Dynarec: RAM/VRAM contents changed under existing translations.
+     * Clear metadata then flush WRITABLE with FULL_CACHE (never skipped by
+     * PSP_REDUCE_CACHE_INVALIDATION). Do not flush READONLY/LOADING_ROM --
+     * that cascades a NATIVE_BRANCHING writable flush that REDUCE may skip. */
     clear_metadata_area(METADATA_AREA_EWRAM, CLEAR_REASON_LOADING_STATE);
     clear_metadata_area(METADATA_AREA_IWRAM, CLEAR_REASON_LOADING_STATE);
     clear_metadata_area(METADATA_AREA_VRAM,  CLEAR_REASON_LOADING_STATE);
+    flush_translation_cache(TRANSLATION_REGION_WRITABLE, FLUSH_REASON_FULL_CACHE);
 
     oam_update = 1;
     gbc_sound_update = 1;
@@ -3788,11 +3773,6 @@ void load_state(char *savestate_filename)
   }
 
   scePowerUnlock(0);
-  
-  // Restore overlay if we freed it earlier
-  if (need_restore_overlay) {
-    load_overlay(saved_overlay_name);
-  }
 }
 
 void save_state(char *savestate_filename, u16 *screen_capture)
@@ -3801,38 +3781,19 @@ void save_state(char *savestate_filename, u16 *screen_capture)
   char savestate_path[MAX_PATH];
 
   u8 *savestate_write_buffer;
+  u32 savestate_used;
+
+  if (screen_capture == NULL) {
+    error_msg("Could not capture screen for save state.", 1);
+    return;
+  }
 
   sprintf(savestate_path, "%s%s", dir_state, savestate_filename);
 
-  // Temporarily free overlay memory to make room for save state buffer
-  extern void free_overlay_memory(void);
-  extern void load_overlay(const char *filename);
-  extern u32 option_overlay_enabled;
-  extern u32 option_overlay_selected;
-  extern char overlay_names[10][64];
-  int need_restore_overlay = 0;
-  char saved_overlay_name[64] = {0};
-  
-  // Free overlay memory if any overlay is loaded (not just if enabled)
-  extern int overlay_loaded;
-  if (overlay_loaded || (option_overlay_enabled && option_overlay_selected > 0)) {
-    if (option_overlay_selected > 0 && option_overlay_selected < 10) {
-      strcpy(saved_overlay_name, overlay_names[option_overlay_selected]);
-      need_restore_overlay = 1;
-    }
-    free_overlay_memory();
-  }
+  /* Overlay free/restore is owned by pause_overlay_for_saveload() /
+   * resume_overlay_after_saveload() at the call sites -- do not free here. */
 
   savestate_write_buffer = (u8 *)safe_malloc(SAVESTATE_SIZE);
-  if (savestate_write_buffer == NULL) {
-    // Restore overlay if allocation failed
-    if (need_restore_overlay) {
-      load_overlay(saved_overlay_name);
-    }
-    scePowerUnlock(0);
-    error_msg("Could not allocate memory for save state.", 1);
-    return;
-  }
   memset(savestate_write_buffer, 0, SAVESTATE_SIZE);
 
   write_mem_ptr = savestate_write_buffer;
@@ -3852,6 +3813,14 @@ void save_state(char *savestate_filename, u16 *screen_capture)
 
     // Now write the savestate data to memory buffer, then to file
     SAVESTATE_BLOCK(write_mem);
+    savestate_used = (u32)(write_mem_ptr - savestate_write_buffer);
+    if (savestate_used > SAVESTATE_SIZE) {
+      FILE_CLOSE(savestate_file);
+      scePowerUnlock(0);
+      free(savestate_write_buffer);
+      error_msg("Save state buffer overflow.", 1);
+      return;
+    }
     FILE_WRITE(savestate_file, savestate_write_buffer, SAVESTATE_SIZE);
     FILE_CLOSE(savestate_file);
   }
@@ -3859,11 +3828,6 @@ void save_state(char *savestate_filename, u16 *screen_capture)
   scePowerUnlock(0);
 
   free(savestate_write_buffer);
-  
-  // Restore overlay if we freed it earlier
-  if (need_restore_overlay) {
-    load_overlay(saved_overlay_name);
-  }
 }
 
 
@@ -3978,11 +3942,11 @@ void save_auto_resume_state(void)
   
   // Save state with a dummy screen capture for auto-save
   u16 *dummy_screen = (u16 *)safe_malloc(GBA_SCREEN_SIZE);
-  if (dummy_screen != NULL) {
-    memset(dummy_screen, 0, GBA_SCREEN_SIZE);  // Fill with black screen
-    save_state(savestate_filename, dummy_screen);
-    free(dummy_screen);
-  }
+  memset(dummy_screen, 0, GBA_SCREEN_SIZE);  // Fill with black screen
+  pause_overlay_for_saveload();
+  save_state(savestate_filename, dummy_screen);
+  resume_overlay_after_saveload();
+  free(dummy_screen);
 }
 
 s32 load_auto_resume_state(void)
@@ -4010,7 +3974,9 @@ s32 load_auto_resume_state(void)
     }
     
     // Try to load the state
+    pause_overlay_for_saveload();
     load_state(savestate_filename);
+    resume_overlay_after_saveload();
     return 0;
   }
   

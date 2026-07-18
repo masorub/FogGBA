@@ -12,10 +12,13 @@ BUILD_PRX = 1
 ENCRYPT = 1
 
 PSP_FW_VERSION = 300
-PSP_LARGE_MEMORY = 0
+# MEMSIZE=1 in PARAM.SFO (64MB PSP). pack-pbp from SDK still emits TITLE max_len=8;
+# after make, tools/make_param_sfo.py rewrites PARAM.SFO (TITLE/TITLE_8 max_len=128).
+PSP_LARGE_MEMORY = 1
 
 PSP_EBOOT_ICON = res/ICON0.png
-PSP_EBOOT_TITLE = FrogGBA
+PSP_EBOOT_PIC1 = res/PIC1.png
+PSP_EBOOT_TITLE = FogGBA
 
 EXTRA_TARGETS = EBOOT.PBP
 
@@ -34,7 +37,7 @@ OBJG = compress.o uncompr.o gzclose.o gzlib.o gzread.o gzwrite.o
 
 OBJS = $(MAINOBJS) $(OBJZ) $(OBJG)
 
-TARGET = FrogGBA
+TARGET = FogGBA
 
 VPATH = src src/zlib
 
