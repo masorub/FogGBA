@@ -12,9 +12,10 @@ from PIL import Image, ImageDraw, ImageFilter, ImageTk
 
 from . import config
 from .fog_transfer import FogTransferError, FOG_PORT, probe_fog, send_rom
+from .paths import resource_dir
 from .scanner import local_ipv4_addresses, subnet_hosts
 
-ASSETS = Path(__file__).resolve().parent.parent / "assets"
+ASSETS = resource_dir() / "assets"
 
 HELP_TEXT = """\
 FogConnect — FogGBA Wi-Fi ROM transfer
@@ -81,7 +82,7 @@ class FogConnectApp(tk.Tk):
         self._pending: list[Path] = []
         self._photos: list[ImageTk.PhotoImage] = []
 
-        self.host_var = tk.StringVar(value=str(self.cfg.get("host", "192.168.1.1")))
+        self.host_var = tk.StringVar(value=str(self.cfg.get("host", "192.168.1.11")))
         self.port_var = tk.StringVar(value=str(self.cfg.get("fog_port", FOG_PORT)))
         self.status_var = tk.StringVar(value="WAITING FOR PSP")
         self.file_var = tk.StringVar(value="")

@@ -3,10 +3,12 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-CONFIG_PATH = Path(__file__).resolve().parent.parent / "settings.json"
+from .paths import app_dir
+
+CONFIG_PATH = app_dir() / "settings.json"
 
 DEFAULTS = {
-    "host": "192.168.1.1",
+    "host": "192.168.1.11",
     "fog_port": 2121,
 }
 

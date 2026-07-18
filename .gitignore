@@ -49,4 +49,10 @@ Thumbs.db
 
 # FogConnect UI assets
 !FogConnect/assets/*.png
-
+# FogConnect Python / PyInstaller
+FogConnect/dist/
+FogConnect/build/
+FogConnect/*.spec
+__pycache__/
+**/__pycache__/
+*.py[cod]
