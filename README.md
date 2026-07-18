@@ -32,15 +32,15 @@ CFW required.
 
 `dir.ini` wires these paths. Screenshots go to `ms0:/PICTURE`.
 
-## Wi-Fi Receive (FogTransfer)
+## Wi-Fi Receive (FogConnect)
 
 Send ROMs from PC without CM File Manager:
 
 1. On PSP: FogGBA menu → **Wi-Fi Receive** (note IP, port **2121**)
-2. On PC: run the FogTransfer client (`psp-wireless-transfer`) → tab **FogGBA** → send `.gba` / `.zip`
+2. On PC: run **FogConnect** (`FogTransfer_PC.zip` / `run.bat`) → **Send ROM** (`.gba` / `.zip`)
 3. File lands in `roms/`
 
-PSP and PC must be on the same Wi-Fi network (router).
+PSP and PC must be on the same Wi-Fi network (router). Help in the app is RU/EN.
 
 ## Fixes in this fork (vs FrogGBA 0.3.3)
 
