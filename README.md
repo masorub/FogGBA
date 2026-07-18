@@ -9,13 +9,12 @@ Based on FrogGBA / TempGBA / gpSP Kai / gpSP. Original authors remain credited i
 
 ## Install
 
-CFW required (e.g. 6.61 PROMOD).
+CFW required.
 
-1. Download the latest release zip from [Releases](https://github.com/masorub/FogGBA/releases)
-2. Unzip to the Memory Stick root (creates `PSP/GAME/FogGBA/`)  
-   or copy the whole `FogGBA` folder to `ms0:/PSP/GAME/`
+1. Build from source (see [BUILD_INSTRUCTIONS.md](BUILD_INSTRUCTIONS.md)) or use your own binaries
+2. Copy the whole `FogGBA` folder to `ms0:/PSP/GAME/`
 3. You need **all** of: `EBOOT.PBP`, `FogGBA.prx`, `ku_bridge.prx`, `exception.prx`
-4. Put `gba_bios.bin` next to `EBOOT.PBP`
+4. The emulator will search for BIOS file next to `EBOOT.PBP`
 5. Put ROMs in `roms/`
 6. Launch **FogGBA** from the Games menu
 
@@ -24,7 +23,7 @@ CFW required (e.g. 6.61 PROMOD).
 | Folder | Purpose |
 |--------|---------|
 | `roms/` | GBA ROMs (`.gba`, `.zip`) |
-| `save/` | Battery saves (`.sav`) |
+| `save/` | saves |
 | `state/` | Savestates (`.svs`) |
 | `cfg/` | Per-game configs |
 | `cheat/` | Cheat files |
