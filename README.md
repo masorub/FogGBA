@@ -11,8 +11,9 @@ Based on FrogGBA / TempGBA / gpSP Kai / gpSP. Original authors remain credited i
 
 CFW required.
 
-1. Build from source (see [BUILD_INSTRUCTIONS.md](BUILD_INSTRUCTIONS.md)) or use your own binaries
-2. Copy the whole `FogGBA` folder to `ms0:/PSP/GAME/`
+1. Download the latest release from [Releases](https://github.com/masorub/FogGBA/releases)
+2. Unzip to the Memory Stick root (creates `PSP/GAME/FogGBA/`)  
+   or copy the whole `FogGBA` folder to `ms0:/PSP/GAME/`
 3. You need **all** of: `EBOOT.PBP`, `FogGBA.prx`, `ku_bridge.prx`, `exception.prx`
 4. The emulator will search for BIOS file next to `EBOOT.PBP`
 5. Put ROMs in `roms/`
@@ -39,10 +40,6 @@ CFW required.
 - LOAD ↔ SAVE indicator restored (Left/Right toggles, Circle executes)
 - LOAD/SAVE label placed to the right of the save date (no overlap)
 - XMB title (`PARAM.SFO`) fixed for system label next to icon
-
-## Build
-
-See [BUILD_INSTRUCTIONS.md](BUILD_INSTRUCTIONS.md). Docker image + `build.sh`.
 
 ## Credits
 
