@@ -46,3 +46,7 @@ buildlog.txt
 .Trashes
 ehthumbs.db
 Thumbs.db
+
+# FogConnect UI assets
+!FogConnect/assets/*.png
+

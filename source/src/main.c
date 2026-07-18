@@ -895,7 +895,10 @@ int user_main(int argc, char *argv[])
   {
     if (load_file(file_ext, load_filename, dir_roms) < 0)
     {
-      menu();
+      /* Stay in menu until a ROM is loaded — exiting menu with no game
+       * used to fall through into execute_arm_translate → "bad jump". */
+      while (gamepak_filename[0] == 0)
+        menu();
     }
     else
     {
@@ -907,7 +910,8 @@ int user_main(int argc, char *argv[])
       {
         clear_screen(COLOR32_BLACK);
         error_msg(MSG[MSG_ERR_LOAD_GAMEPACK], CONFIRMATION_CONT);
-        menu();
+        while (gamepak_filename[0] == 0)
+          menu();
       }
     }
   }

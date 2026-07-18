@@ -1567,7 +1567,8 @@ u32 menu(void)
 
   void menu_exit(void)
   {
-    if (!first_load)
+    /* Never resume emulation without a loaded ROM (bad jump). */
+    if (!first_load && gamepak_filename[0] != 0)
       repeat = 0;
   }
 
@@ -1636,6 +1637,7 @@ u32 menu(void)
       }
       reg[CHANGED_PC_STATUS] = 1;
 
+      first_load = 0;
       return_value = 1;
       repeat = 0;
     }
@@ -1649,7 +1651,7 @@ u32 menu(void)
 
   void menu_reset(void)
   {
-    if (!first_load)
+    if (!first_load && gamepak_filename[0] != 0)
     {
       reset_gba();
       reg[CHANGED_PC_STATUS] = 1;
@@ -2299,6 +2301,14 @@ u32 menu(void)
       submenu_savestate();
     else if (current_menu == &main_menu)
       submenu_main();
+    else if (current_menu == &emulator_menu)
+      submenu_emulator();
+    else if (current_menu == &gamepad_config_menu)
+      submenu_gamepad();
+    else if (current_menu == &analog_config_menu)
+      submenu_analog();
+    else if (current_menu == &cheats_misc_menu)
+      submenu_cheats_misc();
     else if (current_menu && current_menu->init_function != NULL)
       current_menu->init_function();
 
@@ -2480,13 +2490,16 @@ u32 menu(void)
                   menu_load_file();
                   break;
                 case 14: // "Wi-Fi Receive"
+                  while (get_pad_input(0x0001FFFF) != 0)
+                    ;
                   wifi_receive_run();
                   break;
                 case 15: // "Reset Game"
                   menu_reset();
                   break;
                 case 16: // "Return to Game"
-                  repeat = 0;
+                  if (!first_load && gamepak_filename[0] != 0)
+                    repeat = 0;
                   break;
                 case 18: // "Quit"
                   menu_quit();
