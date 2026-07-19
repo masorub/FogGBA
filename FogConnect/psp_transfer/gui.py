@@ -136,36 +136,49 @@ class FogConnectApp(tk.Tk):
         """Dark 3D stadium button: thick side wall + raised face + rim highlight."""
         im = Image.new("RGBA", (w, h), (0, 0, 0, 0))
         d = ImageDraw.Draw(im)
-        depth = max(4, h // 7)
-        r = (h - depth) // 2
+        depth = 7 if h >= 36 else 5
+        face_h = h - depth
+        r = face_h // 2
 
-        # Side wall / thickness (visible under the face)
-        wall = (28, 28, 28, 255)
-        face = (42, 42, 42, 255) if hover else (34, 34, 34, 255)
-        rim = (78, 78, 78, 255)
+        wall = (22, 22, 22, 255)
+        face = (48, 48, 48, 255) if hover else (38, 38, 38, 255)
+        rim = (92, 92, 92, 255)
+        edge = (55, 55, 55, 255)
+        y0 = depth // 2 if pressed else 0
         if pressed:
-            face = (28, 28, 28, 255)
-            wall = (18, 18, 18, 255)
+            face = (30, 30, 30, 255)
+            wall = (14, 14, 14, 255)
 
-        # Bottom body (wall) — full pill
-        d.rounded_rectangle([0, depth // 2, w - 1, h - 1], radius=r + 1, fill=wall)
+        # Thick lower body (visible “side wall”)
+        d.rounded_rectangle([0, y0 + 2, w - 1, y0 + face_h + depth - 1], radius=r + 1, fill=wall)
+        # Slight lighter bevel on the outer wall edge
+        d.rounded_rectangle(
+            [0, y0 + face_h - 2, w - 1, y0 + face_h + depth - 1],
+            radius=r // 2 + 1,
+            fill=(16, 16, 16, 255),
+        )
+
         # Raised face
-        face_box = [0, 0 if not pressed else depth // 2, w - 1, h - 1 - depth]
-        if pressed:
-            face_box = [0, depth // 2, w - 1, h - 1 - depth // 2]
-        d.rounded_rectangle(face_box, radius=r, fill=face)
+        fx1, fy1, fx2, fy2 = 0, y0, w - 1, y0 + face_h - 1
+        d.rounded_rectangle([fx1, fy1, fx2, fy2], radius=r, fill=face)
+        # Face outline (defines the top plate against the wall)
+        d.rounded_rectangle([fx1, fy1, fx2, fy2], radius=r, outline=edge, width=1)
+
         # Soft top sheen
-        fx1, fy1, fx2, fy2 = face_box
-        sheen_h = max(2, (fy2 - fy1) // 2)
         sheen = Image.new("RGBA", (w, h), (0, 0, 0, 0))
         sd = ImageDraw.Draw(sheen)
-        sd.rounded_rectangle([fx1 + 1, fy1 + 1, fx2 - 1, fy1 + sheen_h], radius=max(1, r - 2), fill=(255, 255, 255, 18))
+        sd.rounded_rectangle(
+            [fx1 + 2, fy1 + 2, fx2 - 2, fy1 + face_h // 2],
+            radius=max(1, r - 3),
+            fill=(255, 255, 255, 22),
+        )
         im = Image.alpha_composite(im, sheen)
         d = ImageDraw.Draw(im)
-        # Thin rim highlight along top of face
-        d.arc([fx1, fy1, fx1 + 2 * r, fy1 + 2 * r], 180, 270, fill=rim, width=1)
-        d.line([(fx1 + r, fy1), (fx2 - r, fy1)], fill=rim, width=1)
-        d.arc([fx2 - 2 * r, fy1, fx2, fy1 + 2 * r], 270, 360, fill=rim, width=1)
+
+        # Bright rim along the top curve of the face
+        d.arc([fx1 + 1, fy1 + 1, fx1 + 2 * r - 1, fy1 + 2 * r - 1], 200, 270, fill=rim, width=2)
+        d.line([(fx1 + r, fy1 + 1), (fx2 - r, fy1 + 1)], fill=rim, width=1)
+        d.arc([fx2 - 2 * r + 1, fy1 + 1, fx2 - 1, fy1 + 2 * r - 1], 270, 340, fill=rim, width=2)
 
         if label:
             from PIL import ImageFont
