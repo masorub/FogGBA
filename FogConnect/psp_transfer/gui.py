@@ -25,16 +25,16 @@ FogConnect — FogGBA Wi-Fi ROM transfer
 -------
 1. PSP и ПК в одной Wi-Fi сети (роутер).
 2. На PSP: FogGBA → меню → Wi-Fi Receive (IP, порт 2121).
-3. Settings (⚙) → IP или Find.
-4. Drag & drop .gba / .zip → Send to PSP.
+3. Введите IP/порт под статусом PSP, или нажмите Find.
+4. Check / Save → Drag & drop .gba / .zip → Send to PSP.
 5. Файл появится в roms/ на PSP.
 
 ENGLISH
 -------
 1. PSP and PC on the same Wi-Fi network (router).
 2. On PSP: FogGBA → menu → Wi-Fi Receive (IP, port 2121).
-3. Settings (gear) → IP or Find.
-4. Drag & drop .gba / .zip → Send to PSP.
+3. Enter IP/port under the PSP status, or press Find.
+4. Check / Save → Drag & drop .gba / .zip → Send to PSP.
 5. File appears in roms/ on the PSP.
 """
 
@@ -188,30 +188,80 @@ class FogConnectApp(tk.Tk):
 
         # DEVICE
         tk.Label(right, text="DEVICE", fg=MUTED, bg=BG, font=("Bahnschrift", 8)).pack(anchor=tk.W)
-        card_im = self._make_device_card(500, 76)
+        card_im = self._make_device_card(500, 64)
         self._device_card_ph = self._photo_from(card_im)
 
-        device_wrap = tk.Canvas(right, width=500, height=76, bg=BG, highlightthickness=0, bd=0)
-        device_wrap.pack(anchor=tk.W, pady=(8, 22))
+        device_wrap = tk.Canvas(right, width=500, height=64, bg=BG, highlightthickness=0, bd=0)
+        device_wrap.pack(anchor=tk.W, pady=(8, 8))
         device_wrap.create_image(0, 0, image=self._device_card_ph, anchor="nw")
 
-        psp = self._photo(ASSETS / "icon_psp.png", (48, 48))
+        psp = self._photo(ASSETS / "icon_psp.png", (40, 40))
         if psp:
-            device_wrap.create_image(28, 38, image=psp, anchor="w")
+            device_wrap.create_image(24, 32, image=psp, anchor="w")
 
         self._device_status_id = device_wrap.create_text(
-            90, 30, text="WAITING FOR PSP", fill=TEXT, font=("Bahnschrift", 13, "bold"), anchor="w"
+            80, 32, text="WAITING FOR PSP", fill=TEXT, font=("Bahnschrift", 13, "bold"), anchor="w"
         )
-        self._device_ip_id = device_wrap.create_text(
-            90, 50, text=f"{self.host_var.get()}:{self.port_var.get()}", fill=MUTED, font=("Bahnschrift", 8), anchor="w"
-        )
-        self._dot_id = device_wrap.create_oval(460, 32, 474, 46, fill="#333333", outline="")
+        self._dot_id = device_wrap.create_oval(460, 26, 474, 40, fill="#333333", outline="")
         self._device_canvas = device_wrap
-        device_wrap.bind("<Button-1>", lambda _e: self.show_settings())
+
+        # IP / port under status card
+        addr = tk.Frame(right, bg=BG)
+        addr.pack(anchor=tk.W, fill=tk.X, pady=(0, 8))
+        host_entry = tk.Entry(
+            addr,
+            textvariable=self.host_var,
+            bg=CARD,
+            fg=TEXT,
+            insertbackground=TEXT,
+            relief=tk.FLAT,
+            font=("Bahnschrift", 11),
+            highlightthickness=1,
+            highlightbackground=LINE,
+            highlightcolor="#3a3a3a",
+        )
+        host_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, ipady=7, padx=(0, 8))
+        tk.Label(addr, text=":", fg=MUTED, bg=BG, font=("Bahnschrift", 12)).pack(side=tk.LEFT, padx=(0, 8))
+        port_entry = tk.Entry(
+            addr,
+            textvariable=self.port_var,
+            bg=CARD,
+            fg=TEXT,
+            insertbackground=TEXT,
+            relief=tk.FLAT,
+            font=("Bahnschrift", 11),
+            width=7,
+            justify=tk.CENTER,
+            highlightthickness=1,
+            highlightbackground=LINE,
+            highlightcolor="#3a3a3a",
+        )
+        port_entry.pack(side=tk.LEFT, ipady=7)
+
+        def _action_btn(parent: tk.Frame, text: str, cmd, side=tk.LEFT) -> tk.Label:
+            b = tk.Label(
+                parent,
+                text=text,
+                fg=TEXT,
+                bg="#2a2a2a",
+                padx=16,
+                pady=7,
+                cursor="hand2",
+                font=("Bahnschrift", 9),
+            )
+            b.pack(side=side, padx=(0, 8) if side == tk.LEFT else (8, 0))
+            b.bind("<Button-1>", lambda _e: cmd())
+            return b
+
+        actions = tk.Frame(right, bg=BG)
+        actions.pack(anchor=tk.W, fill=tk.X, pady=(0, 16))
+        _action_btn(actions, "Check", self.check_fog)
+        _action_btn(actions, "Find", self.find_fog)
+        _action_btn(actions, "Save", self.save_settings, side=tk.RIGHT)
 
         # FILE
         tk.Label(right, text="FILE", fg=MUTED, bg=BG, font=("Bahnschrift", 8)).pack(anchor=tk.W)
-        drop_im = self._make_drop_zone(500, 210)
+        drop_im = self._make_drop_zone(500, 180)
         # composite file icon + texts onto drop
         file_icon = None
         try:
@@ -219,7 +269,7 @@ class FogConnectApp(tk.Tk):
         except OSError:
             pass
         if file_icon:
-            drop_im.alpha_composite(file_icon, (222, 48))
+            drop_im.alpha_composite(file_icon, (222, 36))
         from PIL import ImageFont
 
         font_path = "C:/Windows/Fonts/bahnschrift.ttf"
@@ -230,17 +280,17 @@ class FogConnectApp(tk.Tk):
         except OSError:
             f_title = f_sub = f_hint = ImageFont.load_default()
         dd = ImageDraw.Draw(drop_im)
-        dd.text((250, 118), "DRAG & DROP YOUR ROM HERE", fill=(180, 180, 180, 255), font=f_title, anchor="mt")
-        dd.text((250, 142), "ONLY .GBA / .ZIP FILES ARE SUPPORTED", fill=(100, 100, 100, 255), font=f_hint, anchor="mt")
-        self._drop_file_pos = (250, 168)
+        dd.text((250, 104), "DRAG & DROP YOUR ROM HERE", fill=(180, 180, 180, 255), font=f_title, anchor="mt")
+        dd.text((250, 128), "ONLY .GBA / .ZIP FILES ARE SUPPORTED", fill=(100, 100, 100, 255), font=f_hint, anchor="mt")
+        self._drop_file_pos = (250, 150)
         self._drop_base = drop_im.copy()
         self._drop_ph = self._photo_from(drop_im)
 
-        self.drop_canvas = tk.Canvas(right, width=500, height=210, bg=BG, highlightthickness=0, bd=0)
-        self.drop_canvas.pack(anchor=tk.W, pady=(8, 18))
+        self.drop_canvas = tk.Canvas(right, width=500, height=180, bg=BG, highlightthickness=0, bd=0)
+        self.drop_canvas.pack(anchor=tk.W, pady=(8, 14))
         self.drop_canvas.create_image(0, 0, image=self._drop_ph, anchor="nw")
         self._drop_name_id = self.drop_canvas.create_text(
-            250, 175, text="", fill="#777777", font=("Bahnschrift", 8), anchor="center"
+            250, 152, text="", fill="#777777", font=("Bahnschrift", 8), anchor="center"
         )
         self.drop_canvas.bind("<Button-1>", lambda _e: self.pick_file())
         self.file_var.trace_add("write", lambda *_: self._on_file_var())
@@ -271,12 +321,11 @@ class FogConnectApp(tk.Tk):
         self._prog_fill = self.progress.create_rectangle(0, 0, 0, 3, fill=GREEN, outline="")
 
         # FOOTER
-        foot = tk.Frame(right, bg=BG, width=500, height=56)
-        foot.pack(side=tk.BOTTOM, fill=tk.X, pady=(24, 0))
+        foot = tk.Frame(right, bg=BG, width=500, height=48)
+        foot.pack(side=tk.BOTTOM, fill=tk.X, pady=(16, 0))
         foot.pack_propagate(False)
 
         info = self._photo(ASSETS / "icon_info.png", (22, 22))
-        gear = self._photo(ASSETS / "icon_gear.png", (22, 22))
         logo = self._photo(ASSETS / "logo_fog.png")
 
         left_f = tk.Frame(foot, bg=BG)
@@ -289,10 +338,6 @@ class FogConnectApp(tk.Tk):
 
         right_f = tk.Frame(foot, bg=BG)
         right_f.pack(side=tk.RIGHT)
-        if gear:
-            g = tk.Label(right_f, image=gear, bg=BG, bd=0, cursor="hand2")
-            g.pack(side=tk.LEFT, padx=8)
-            g.bind("<Button-1>", lambda _e: self.show_settings())
         if info:
             i = tk.Label(right_f, image=info, bg=BG, bd=0, cursor="hand2")
             i.pack(side=tk.LEFT)
@@ -310,9 +355,6 @@ class FogConnectApp(tk.Tk):
         self._device_canvas.itemconfigure(self._dot_id, fill=color)
         self._device_canvas.itemconfigure(
             self._device_status_id, text="PSP CONNECTED" if ok else "PSP OFFLINE"
-        )
-        self._device_canvas.itemconfigure(
-            self._device_ip_id, text=f"{self.host_var.get()}:{self.port_var.get()}"
         )
 
     def _set_progress(self, done: int, total: int) -> None:
@@ -390,39 +432,7 @@ class FogConnectApp(tk.Tk):
         text.insert("1.0", HELP_TEXT)
         text.configure(state=tk.DISABLED)
 
-    def show_settings(self) -> None:
-        win = tk.Toplevel(self)
-        win.title("Settings")
-        win.geometry("380x240")
-        win.configure(bg=BG)
-        win.transient(self)
-        body = tk.Frame(win, bg=BG, padx=22, pady=22)
-        body.pack(fill=tk.BOTH, expand=True)
-
-        tk.Label(body, text="DEVICE IP", fg=MUTED, bg=BG, font=("Bahnschrift", 8)).pack(anchor=tk.W)
-        e1 = tk.Entry(body, textvariable=self.host_var, bg=CARD, fg=TEXT, insertbackground=TEXT, relief=tk.FLAT)
-        e1.pack(fill=tk.X, pady=(4, 12), ipady=8)
-
-        tk.Label(body, text="PORT", fg=MUTED, bg=BG, font=("Bahnschrift", 8)).pack(anchor=tk.W)
-        e2 = tk.Entry(body, textvariable=self.port_var, bg=CARD, fg=TEXT, insertbackground=TEXT, relief=tk.FLAT)
-        e2.pack(fill=tk.X, pady=(4, 16), ipady=8)
-
-        row = tk.Frame(body, bg=BG)
-        row.pack(fill=tk.X)
-
-        def btn(text, cmd):
-            b = tk.Label(row, text=text, fg=TEXT, bg="#2a2a2a", padx=14, pady=8, cursor="hand2")
-            b.pack(side=tk.LEFT, padx=(0, 8))
-            b.bind("<Button-1>", lambda _e: cmd())
-            return b
-
-        btn("Find", lambda: (win.destroy(), self.find_fog()))
-        btn("Check", self.check_fog)
-        save = tk.Label(row, text="Save", fg=TEXT, bg="#2a2a2a", padx=14, pady=8, cursor="hand2")
-        save.pack(side=tk.RIGHT)
-        save.bind("<Button-1>", lambda _e: self._save_settings(win))
-
-    def _save_settings(self, win: tk.Toplevel) -> None:
+    def save_settings(self) -> None:
         self.cfg["host"] = self.host_var.get().strip()
         try:
             self.cfg["fog_port"] = self._port()
@@ -430,10 +440,6 @@ class FogConnectApp(tk.Tk):
             messagebox.showerror("FogConnect", "Invalid port")
             return
         config.save(self.cfg)
-        self._device_canvas.itemconfigure(
-            self._device_ip_id, text=f"{self.host_var.get()}:{self.port_var.get()}"
-        )
-        win.destroy()
         self.check_fog()
 
     def check_fog_silent(self) -> None:
