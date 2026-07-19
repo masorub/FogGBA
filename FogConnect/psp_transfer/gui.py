@@ -25,7 +25,7 @@ FogConnect — FogGBA Wi-Fi ROM transfer
 -------
 1. PSP и ПК в одной Wi-Fi сети (роутер).
 2. На PSP: FogGBA → меню → Wi-Fi Receive (IP, порт 2121).
-3. Введите IP/порт под статусом PSP, или нажмите Find.
+3. Кликните IP:порт в карточке DEVICE (или Find).
 4. Check / Save → Drag & drop .gba / .zip → Send to PSP.
 5. Файл появится в roms/ на PSP.
 
@@ -33,7 +33,7 @@ ENGLISH
 -------
 1. PSP and PC on the same Wi-Fi network (router).
 2. On PSP: FogGBA → menu → Wi-Fi Receive (IP, port 2121).
-3. Enter IP/port under the PSP status, or press Find.
+3. Click IP:port inside the DEVICE card (or press Find).
 4. Check / Save → Drag & drop .gba / .zip → Send to PSP.
 5. File appears in roms/ on the PSP.
 """
@@ -84,6 +84,7 @@ class FogConnectApp(tk.Tk):
 
         self.host_var = tk.StringVar(value=str(self.cfg.get("host", "192.168.1.11")))
         self.port_var = tk.StringVar(value=str(self.cfg.get("fog_port", FOG_PORT)))
+        self.addr_var = tk.StringVar(value=f"{self.host_var.get()}:{self.port_var.get()}")
         self.status_var = tk.StringVar(value="WAITING FOR PSP")
         self.file_var = tk.StringVar(value="")
 
@@ -186,57 +187,41 @@ class FogConnectApp(tk.Tk):
                 anchor=tk.W, pady=(4, 28)
             )
 
-        # DEVICE
+        # DEVICE — status card with inline editable IP:port
         tk.Label(right, text="DEVICE", fg=MUTED, bg=BG, font=("Bahnschrift", 8)).pack(anchor=tk.W)
-        card_im = self._make_device_card(500, 64)
+        card_im = self._make_device_card(500, 76)
         self._device_card_ph = self._photo_from(card_im)
 
-        device_wrap = tk.Canvas(right, width=500, height=64, bg=BG, highlightthickness=0, bd=0)
+        device_wrap = tk.Canvas(right, width=500, height=76, bg=BG, highlightthickness=0, bd=0)
         device_wrap.pack(anchor=tk.W, pady=(8, 8))
         device_wrap.create_image(0, 0, image=self._device_card_ph, anchor="nw")
 
-        psp = self._photo(ASSETS / "icon_psp.png", (40, 40))
+        psp = self._photo(ASSETS / "icon_psp.png", (44, 44))
         if psp:
-            device_wrap.create_image(24, 32, image=psp, anchor="w")
+            device_wrap.create_image(26, 38, image=psp, anchor="w")
 
         self._device_status_id = device_wrap.create_text(
-            80, 32, text="WAITING FOR PSP", fill=TEXT, font=("Bahnschrift", 13, "bold"), anchor="w"
+            88, 28, text="WAITING FOR PSP", fill=TEXT, font=("Bahnschrift", 13, "bold"), anchor="w"
         )
-        self._dot_id = device_wrap.create_oval(460, 26, 474, 40, fill="#333333", outline="")
+        self._dot_id = device_wrap.create_oval(460, 32, 474, 46, fill="#333333", outline="")
         self._device_canvas = device_wrap
 
-        # IP / port under status card
-        addr = tk.Frame(right, bg=BG)
-        addr.pack(anchor=tk.W, fill=tk.X, pady=(0, 8))
-        host_entry = tk.Entry(
-            addr,
-            textvariable=self.host_var,
-            bg=CARD,
-            fg=TEXT,
-            insertbackground=TEXT,
+        # Editable address sits inside the card under the status line
+        self.addr_entry = tk.Entry(
+            device_wrap,
+            textvariable=self.addr_var,
+            bg="#161616",
+            fg=MUTED,
+            insertbackground=DIM,
             relief=tk.FLAT,
-            font=("Bahnschrift", 11),
-            highlightthickness=1,
-            highlightbackground=LINE,
-            highlightcolor="#3a3a3a",
+            bd=0,
+            highlightthickness=0,
+            font=("Bahnschrift", 9),
+            cursor="xterm",
         )
-        host_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, ipady=7, padx=(0, 8))
-        tk.Label(addr, text=":", fg=MUTED, bg=BG, font=("Bahnschrift", 12)).pack(side=tk.LEFT, padx=(0, 8))
-        port_entry = tk.Entry(
-            addr,
-            textvariable=self.port_var,
-            bg=CARD,
-            fg=TEXT,
-            insertbackground=TEXT,
-            relief=tk.FLAT,
-            font=("Bahnschrift", 11),
-            width=7,
-            justify=tk.CENTER,
-            highlightthickness=1,
-            highlightbackground=LINE,
-            highlightcolor="#3a3a3a",
-        )
-        port_entry.pack(side=tk.LEFT, ipady=7)
+        device_wrap.create_window(88, 52, window=self.addr_entry, anchor="w", width=350, height=18)
+        self.addr_entry.bind("<Return>", lambda _e: self.save_settings())
+        self.addr_entry.bind("<FocusOut>", lambda _e: self._apply_addr_field())
 
         def _action_btn(parent: tk.Frame, text: str, cmd, side=tk.LEFT) -> tk.Label:
             b = tk.Label(
@@ -383,6 +368,35 @@ class FogConnectApp(tk.Tk):
     def _port(self) -> int:
         return int(self.port_var.get().strip() or FOG_PORT)
 
+    def _apply_addr_field(self) -> bool:
+        """Parse inline host:port from the device card into host_var / port_var."""
+        raw = self.addr_var.get().strip().replace(" ", "")
+        if not raw:
+            return False
+        if ":" in raw:
+            host, _, port_s = raw.rpartition(":")
+            host = host.strip()
+            port_s = port_s.strip()
+        else:
+            host, port_s = raw, str(FOG_PORT)
+        if not host:
+            return False
+        try:
+            port = int(port_s or FOG_PORT)
+        except ValueError:
+            return False
+        if not (1 <= port <= 65535):
+            return False
+        self.host_var.set(host)
+        self.port_var.set(str(port))
+        self.addr_var.set(f"{host}:{port}")
+        return True
+
+    def _set_addr(self, host: str, port: int | str) -> None:
+        self.host_var.set(host)
+        self.port_var.set(str(port))
+        self.addr_var.set(f"{host}:{port}")
+
     def _poll_queue(self) -> None:
         try:
             while True:
@@ -415,8 +429,7 @@ class FogConnectApp(tk.Tk):
                         )
                     else:
                         host, port = found[0]
-                        self.host_var.set(host)
-                        self.port_var.set(str(port))
+                        self._set_addr(host, port)
                         self._set_connected(True)
         except queue.Empty:
             pass
@@ -433,16 +446,17 @@ class FogConnectApp(tk.Tk):
         text.configure(state=tk.DISABLED)
 
     def save_settings(self) -> None:
-        self.cfg["host"] = self.host_var.get().strip()
-        try:
-            self.cfg["fog_port"] = self._port()
-        except ValueError:
-            messagebox.showerror("FogConnect", "Invalid port")
+        if not self._apply_addr_field():
+            messagebox.showerror("FogConnect", "Invalid IP:port")
             return
+        self.cfg["host"] = self.host_var.get().strip()
+        self.cfg["fog_port"] = self._port()
         config.save(self.cfg)
         self.check_fog()
 
     def check_fog_silent(self) -> None:
+        if not self._apply_addr_field():
+            return
         host = self.host_var.get().strip()
         try:
             port = self._port()
@@ -455,6 +469,9 @@ class FogConnectApp(tk.Tk):
         threading.Thread(target=work, daemon=True).start()
 
     def check_fog(self) -> None:
+        if not self._apply_addr_field():
+            messagebox.showerror("FogConnect", "Invalid IP:port")
+            return
         host = self.host_var.get().strip()
         try:
             port = self._port()
@@ -482,6 +499,7 @@ class FogConnectApp(tk.Tk):
     def find_fog(self) -> None:
         if self._busy:
             return
+        self._apply_addr_field()
         self._busy = True
         self._device_canvas.itemconfigure(self._device_status_id, text="SCANNING…")
 
@@ -527,6 +545,9 @@ class FogConnectApp(tk.Tk):
             if not self._pending:
                 return
 
+        if not self._apply_addr_field():
+            messagebox.showerror("FogConnect", "Invalid IP:port")
+            return
         host = self.host_var.get().strip()
         try:
             port = self._port()
