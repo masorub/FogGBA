@@ -121,12 +121,86 @@ class FogConnectApp(tk.Tk):
         return im
 
     def _make_send_btn(self, w: int = 480, h: int = 52, hover: bool = False) -> Image.Image:
+        return self._make_chunky_pill(w, h, pressed=False, hover=hover)
+
+    def _make_chunky_pill(
+        self,
+        w: int,
+        h: int,
+        *,
+        label: str | None = None,
+        pressed: bool = False,
+        hover: bool = False,
+        font_size: int = 12,
+    ) -> Image.Image:
+        """Dark 3D stadium button: thick side wall + raised face + rim highlight."""
         im = Image.new("RGBA", (w, h), (0, 0, 0, 0))
         d = ImageDraw.Draw(im)
-        base = (38, 38, 38, 255) if hover else (32, 32, 32, 255)
-        _round_rect(d, (0, 0, w - 1, h - 1), 14, fill=base, outline=(48, 48, 48, 255), width=1)
-        d.rounded_rectangle([1, 1, w - 2, h // 2], radius=12, fill=(255, 255, 255, 12))
+        depth = max(4, h // 7)
+        r = (h - depth) // 2
+
+        # Side wall / thickness (visible under the face)
+        wall = (28, 28, 28, 255)
+        face = (42, 42, 42, 255) if hover else (34, 34, 34, 255)
+        rim = (78, 78, 78, 255)
+        if pressed:
+            face = (28, 28, 28, 255)
+            wall = (18, 18, 18, 255)
+
+        # Bottom body (wall) — full pill
+        d.rounded_rectangle([0, depth // 2, w - 1, h - 1], radius=r + 1, fill=wall)
+        # Raised face
+        face_box = [0, 0 if not pressed else depth // 2, w - 1, h - 1 - depth]
+        if pressed:
+            face_box = [0, depth // 2, w - 1, h - 1 - depth // 2]
+        d.rounded_rectangle(face_box, radius=r, fill=face)
+        # Soft top sheen
+        fx1, fy1, fx2, fy2 = face_box
+        sheen_h = max(2, (fy2 - fy1) // 2)
+        sheen = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+        sd = ImageDraw.Draw(sheen)
+        sd.rounded_rectangle([fx1 + 1, fy1 + 1, fx2 - 1, fy1 + sheen_h], radius=max(1, r - 2), fill=(255, 255, 255, 18))
+        im = Image.alpha_composite(im, sheen)
+        d = ImageDraw.Draw(im)
+        # Thin rim highlight along top of face
+        d.arc([fx1, fy1, fx1 + 2 * r, fy1 + 2 * r], 180, 270, fill=rim, width=1)
+        d.line([(fx1 + r, fy1), (fx2 - r, fy1)], fill=rim, width=1)
+        d.arc([fx2 - 2 * r, fy1, fx2, fy1 + 2 * r], 270, 360, fill=rim, width=1)
+
+        if label:
+            from PIL import ImageFont
+
+            try:
+                f = ImageFont.truetype("C:/Windows/Fonts/bahnschrift.ttf", font_size)
+            except OSError:
+                f = ImageFont.load_default()
+            cy = (fy1 + fy2) // 2
+            d.text((w // 2, cy), label, fill=(236, 236, 236, 255), font=f, anchor="mm")
         return im
+
+    def _pill_button(self, parent: tk.Frame, text: str, cmd, *, side=tk.LEFT, width: int = 108) -> tk.Label:
+        h = 38
+        normal = self._make_chunky_pill(width, h, label=text)
+        pressed = self._make_chunky_pill(width, h, label=text, pressed=True)
+        ph_n = self._photo_from(normal)
+        ph_p = self._photo_from(pressed)
+        pad = (0, 10) if side == tk.LEFT else (10, 0)
+        lbl = tk.Label(parent, image=ph_n, bg=BG, bd=0, cursor="hand2")
+        lbl.pack(side=side, padx=pad)
+        lbl._pill_n = ph_n  # noqa: SLF001 — keep refs
+        lbl._pill_p = ph_p
+
+        def down(_e=None):
+            lbl.configure(image=ph_p)
+
+        def up(_e=None):
+            lbl.configure(image=ph_n)
+            cmd()
+
+        lbl.bind("<ButtonPress-1>", down)
+        lbl.bind("<ButtonRelease-1>", up)
+        lbl.bind("<Leave>", lambda _e: lbl.configure(image=ph_n))
+        return lbl
 
     def _make_drop_zone(self, w: int = 480, h: int = 200) -> Image.Image:
         im = Image.new("RGBA", (w, h), (18, 18, 18, 255))
@@ -223,26 +297,11 @@ class FogConnectApp(tk.Tk):
         self.addr_entry.bind("<Return>", lambda _e: self.save_settings())
         self.addr_entry.bind("<FocusOut>", lambda _e: self._apply_addr_field())
 
-        def _action_btn(parent: tk.Frame, text: str, cmd, side=tk.LEFT) -> tk.Label:
-            b = tk.Label(
-                parent,
-                text=text,
-                fg=TEXT,
-                bg="#2a2a2a",
-                padx=16,
-                pady=7,
-                cursor="hand2",
-                font=("Bahnschrift", 9),
-            )
-            b.pack(side=side, padx=(0, 8) if side == tk.LEFT else (8, 0))
-            b.bind("<Button-1>", lambda _e: cmd())
-            return b
-
         actions = tk.Frame(right, bg=BG)
-        actions.pack(anchor=tk.W, fill=tk.X, pady=(0, 16))
-        _action_btn(actions, "Check", self.check_fog)
-        _action_btn(actions, "Find", self.find_fog)
-        _action_btn(actions, "Save", self.save_settings, side=tk.RIGHT)
+        actions.pack(anchor=tk.W, fill=tk.X, pady=(2, 16))
+        self._pill_button(actions, "CHECK", self.check_fog, width=112)
+        self._pill_button(actions, "FIND", self.find_fog, width=104)
+        self._pill_button(actions, "SAVE", self.save_settings, side=tk.RIGHT, width=104)
 
         # FILE
         tk.Label(right, text="FILE", fg=MUTED, bg=BG, font=("Bahnschrift", 8)).pack(anchor=tk.W)
